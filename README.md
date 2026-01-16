@@ -17,11 +17,11 @@ git clone https://github.com/seu-usuario/rdt3-protocol.git
 **2. Inicie o servidor:**
 
 ```bash
-python server.py
+python servidor.py
 ```
 
 **3. Em outro terminal, inicie o cliente:**
 
 ```bash
-python client.py
+python cliente.py
 ```
