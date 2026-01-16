@@ -1,9 +1,5 @@
 # Funções que permitem o envio e recebimento de dados (cria a conexão cliente-servidor)
 import socket
-# funções que cuidam do timeout e espera
-import time
-
-import select
 
 # data.encode (transforma cada letra do texto em um número)
 # sum (faz a soma desses números)
@@ -21,59 +17,56 @@ def pacote(seq, dado, corrupt=False):
         checksum = (checksum + 1) % 256
     return f"{seq}|{checksum}|{dado}"
 
-def enviar(dado_lista):
+def start_cliente():
     # Criando canal de comunicação (AF_INET = IPV4) (SOCK_DGRAM = UDP)
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     addr = ('127.0.0.1', 12345)
     client_socket.setblocking(False) # garante que o programa não vai ficar preso no "recvfrom" caso nenhum pacote chegue
 
     seq_pacote = 0
-    timeout_tempo = 3.0
 
-    # percorre a lista com as mensagens que irão ser enviadas
-    for dado in dado_lista:
-        ack_recebimento = False
+    while True:
+        print(f"\nAguardando para enviar pacote {seq_pacote}")
+        print("Escolha o comportamento de envio do pacote:\n")
+        print("1 - Envio Normal\n2 - Corromper Dados (Checksum errado)\n3 - Atrasar Pacote (Timeout)\n4 - Encerrar conexão")
 
-        while not ack_recebimento:
-            print(f"\nAguardando para enviar pacote {seq_pacote}")
-            print("Escolha o comportamento de envio do pacote:\n")
-            print("1 - Envio Normal\n2 - Corromper Dados (Checksum errado)\n3 - Atrasar Pacote (Timeout)")
+        opcao = input("\nInsira sua escolha --> ")
+        
+        corrupt = (opcao == "2")
+        delay = (opcao == "3")
 
-            opcao = input("Insira sua escolha --> ")
-            corrupt = (opcao == "2")
-            delay = (opcao == "3")
+        if delay:
+            print("\nSimulando atraso...")
+            client_socket.settimeout(3.0)
+            try:
+                ack = client_socket.recvfrom(1024)
+                print(f"Ack recebido: {ack}")
+            except socket.timeout as erro:
+                print(f"\n[TIMEOUT] O tempo esgotou, reiniciando conexão...")
 
-            if delay:
-                print(f"Simulando atraso... Esperando timeout")
-
-            else:
-                pkt = pacote(seq_pacote, dado, corrupt)
-                client_socket.sendto(pkt.encode(), addr)
+        elif opcao == "4":
+            print("Encerrando conexão...")
+            break
             
-            ready = select.select([client_socket], [], [], timeout_tempo)
+        else:
+            dado = input("Insira uma mensagem: ")
+            pkt = pacote(seq_pacote, dado, corrupt)
+            client_socket.sendto(pkt.encode(), addr)
 
-            if ready[0]:
-                # Recebeu algo antes do timeout
-                ack_data, _ = client_socket.recvfrom(1024)
-                ack_str = ack_data.decode()
-                
-                try:
-                    ack_seq, msg = ack_str.split('|')
-                    ack_seq = int(ack_seq)
+            client_socket.settimeout(3.0)
+            try:
+                ack, addr = client_socket.recvfrom(1024)
+                ack_str = ack.decode()
+                ack_seq, msg = ack_str.split('|')
+                ack_seq = int(ack_seq)
                     
-                    if msg == "ACK" and ack_seq == seq_pacote:
-                        print(f"[SUCESSO] ACK {ack_seq} recebido!")
-                        ack_recebimento = True
-                        seq_pacote = 1 - seq_pacote # Alterna 0 e 1
-                    else:
-                        print(f"[AVISO] ACK incorreto ou corrompido. Ignorando...")
-                except:
-                    print("[ERRO] Falha ao processar ACK.")
-            else:
-                # Ocorreu Timeout
-                print(f"\n[TIMEOUT] O tempo esgotou! Retransmitindo pacote {seq_pacote}...")
+                if msg == "ACK" and ack_seq == seq_pacote:
+                    print(f"[SUCESSO] ACK do pacote: {ack_seq} recebido!")
+                    seq_pacote = 1 - seq_pacote # Alterna 0 e 1
+                else:
+                    print(f"[AVISO] ACK incorreto ou corrompido. Ignorando...")
+            except:
+                print("[ERRO] Falha ao processar ACK.")
 
-    
 if __name__ == "__main__":
-    mensagens = ["Ola", "Mundo", "Redes", "RDT3.0"]
-    enviar(mensagens)
+    start_cliente()

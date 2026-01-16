@@ -12,7 +12,7 @@ def start_server():
     # Criando canal de comunicação (AF_INET = IPV4) (SOCK_DGRAM = UDP)
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     # Vincula o endereço e porta com o canal de comunicação (socket)
-    server_socket.bind(('127.0.0.1', 12345)) #porta igual ou abaixo de 1024 é reservado para o sistema
+    server_socket.bind(('', 12345)) #porta igual ou abaixo de 1024 é reservado para o sistema
 
     seq_esperada = 0
 
